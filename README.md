@@ -329,4 +329,4 @@ Copyright 2026 Orel Ohayon.
 
 ---
 
-<p align="center">Made with ❤️ for the love of AIs and for the Community.</p>
+<p align="center">Made with ❤️ for AIs and for the Community.</p>
