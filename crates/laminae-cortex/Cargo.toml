@@ -16,3 +16,10 @@ tracing = { workspace = true }
 anyhow = { workspace = true }
 tokio = { workspace = true }
 laminae-ollama = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "cortex_bench"
+harness = false

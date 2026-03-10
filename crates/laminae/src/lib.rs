@@ -53,3 +53,11 @@ pub use laminae_glassbox as glassbox;
 
 /// Ollama client for local LLM inference.
 pub use laminae_ollama as ollama;
+
+/// Anthropic Claude backend — first-class EgoBackend for Claude models.
+#[cfg(feature = "anthropic")]
+pub use laminae_anthropic as anthropic;
+
+/// OpenAI-compatible backend — EgoBackend for OpenAI, Groq, Together, DeepSeek, and local servers.
+#[cfg(feature = "openai")]
+pub use laminae_openai as openai;

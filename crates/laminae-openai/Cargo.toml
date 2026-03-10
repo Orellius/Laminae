@@ -1,0 +1,23 @@
+[package]
+name = "laminae-openai"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords = ["ai", "llm", "openai", "gpt", "laminae"]
+categories = ["api-bindings"]
+description = "OpenAI-compatible backend for the Laminae AI SDK"
+
+[dependencies]
+laminae-psyche = { path = "../laminae-psyche" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true
+reqwest = { workspace = true }
+anyhow.workspace = true
+tracing.workspace = true
+futures-util.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true }
+anyhow.workspace = true

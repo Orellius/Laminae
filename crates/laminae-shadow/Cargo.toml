@@ -17,3 +17,11 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 dirs = { workspace = true }
 laminae-ollama = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+tokio = { workspace = true, features = ["rt", "macros"] }
+
+[[bench]]
+name = "shadow_bench"
+harness = false

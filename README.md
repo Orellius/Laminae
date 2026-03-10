@@ -165,7 +165,7 @@ while let Some(event) = rx.recv().await {
 Three hard constraints enforced on all spawned sub-processes:
 
 1. **Command whitelist** — Only approved binaries execute. SSH, curl, compilers, package managers, crypto miners permanently blocked.
-2. **Network egress filter** — macOS `sandbox-exec` profile restricts network to localhost + whitelisted hosts.
+2. **Network egress filter** — Platform-native sandboxing (macOS `sandbox-exec`, Linux namespaces + seccomp) restricts network to localhost + whitelisted hosts.
 3. **Resource watchdog** — Background monitor polls CPU/memory, sends SIGKILL on sustained threshold violation.
 
 ```rust
@@ -175,7 +175,7 @@ use laminae::ironclad::{validate_binary, sandboxed_command, spawn_watchdog, Watc
 validate_binary("git")?;   // OK
 validate_binary("ssh")?;   // Error: permanently blocked
 
-// Run inside macOS sandbox
+// Run inside platform-native sandbox (macOS Seatbelt / Linux namespaces+seccomp)
 let mut cmd = sandboxed_command("git", &["status"], "/path/to/project")?;
 let child = cmd.spawn()?;
 
@@ -217,25 +217,33 @@ gb.validate_output("The weather is sunny.")?;            // OK
 ```toml
 # Full stack
 [dependencies]
-laminae = "0.1"
+laminae = "0.2"
 tokio = { version = "1", features = ["full"] }
+
+# With first-class LLM backends
+[dependencies]
+laminae = { version = "0.2", features = ["anthropic"] }  # Claude
+laminae = { version = "0.2", features = ["openai"] }     # OpenAI / Groq / Together / DeepSeek / local
+laminae = { version = "0.2", features = ["all-backends"] }
 
 # Or pick individual layers
 [dependencies]
-laminae-psyche = "0.1"    # Just the cognitive pipeline
-laminae-persona = "0.1"   # Just voice extraction & enforcement
-laminae-cortex = "0.1"    # Just the learning loop
-laminae-shadow = "0.1"    # Just the red-teaming
-laminae-glassbox = "0.1"  # Just the containment
-laminae-ironclad = "0.1"  # Just the sandbox
-laminae-ollama = "0.1"    # Just the Ollama client
+laminae-psyche = "0.2"       # Just the cognitive pipeline
+laminae-persona = "0.2"      # Just voice extraction & enforcement
+laminae-cortex = "0.2"       # Just the learning loop
+laminae-shadow = "0.2"       # Just the red-teaming
+laminae-glassbox = "0.2"     # Just the containment
+laminae-ironclad = "0.2"     # Just the sandbox
+laminae-ollama = "0.2"       # Just the Ollama client
+laminae-anthropic = "0.2"    # Claude EgoBackend
+laminae-openai = "0.2"       # OpenAI-compatible EgoBackend
 ```
 
 ## Requirements
 
 - **Rust 1.70+**
 - **Ollama** (for Psyche and Shadow LLM features) — `brew install ollama && ollama serve`
-- **macOS** (for Ironclad's `sandbox-exec`) — Linux support planned
+- **macOS or Linux** (for Ironclad's process sandbox)
 
 ## Examples
 
@@ -262,14 +270,16 @@ OPENAI_API_KEY=sk-... cargo run -p laminae --example ego_openai
 ## Architecture
 
 ```
-laminae (meta-crate)
-├── laminae-psyche     ← EgoBackend trait + Id/Superego pipeline
-├── laminae-persona    ← Voice extraction, filter, DNA tracking
-├── laminae-cortex     ← Edit tracking, pattern detection, instruction learning
-├── laminae-shadow     ← Analyzer trait + static/LLM/sandbox stages
-├── laminae-ironclad   ← Command whitelist + sandbox-exec + watchdog
-├── laminae-glassbox   ← GlassboxLogger trait + validation + rate limiter
-└── laminae-ollama     ← Standalone Ollama HTTP client
+laminae (meta-crate, feature-gated backends)
+├── laminae-psyche       ← EgoBackend trait + Id/Superego pipeline
+├── laminae-persona      ← Voice extraction, filter, DNA tracking
+├── laminae-cortex       ← Edit tracking, pattern detection, instruction learning
+├── laminae-shadow       ← Analyzer trait + static/LLM/sandbox stages
+├── laminae-ironclad     ← Command whitelist + cross-platform sandbox + watchdog
+├── laminae-glassbox     ← GlassboxLogger trait + validation + rate limiter
+├── laminae-ollama       ← Standalone Ollama HTTP client
+├── laminae-anthropic    ← Claude EgoBackend (feature: "anthropic")
+└── laminae-openai       ← OpenAI-compatible EgoBackend (feature: "openai")
 ```
 
 Each crate is independent except:
@@ -278,14 +288,17 @@ Each crate is independent except:
 - `laminae-cortex` depends on `laminae-ollama` (for LLM-powered edit analysis)
 - `laminae-shadow` depends on `laminae-ollama` (for LLM adversarial review)
 - `laminae-ironclad` depends on `laminae-glassbox` (for event logging)
+- `laminae-anthropic` depends on `laminae-psyche` (implements EgoBackend)
+- `laminae-openai` depends on `laminae-psyche` (implements EgoBackend)
 
 ## Extension Points
 
-| Trait | What You Implement |
-|-------|-------------------|
-| `EgoBackend` | Plug in any LLM (Claude, GPT, Gemini, local) |
-| `Analyzer` | Add custom Shadow analysis stages |
-| `GlassboxLogger` | Route containment events to your logging system |
+| Trait | What You Implement | First-Party Impls |
+|-------|-------------------|-------------------|
+| `EgoBackend` | Plug in any LLM | `ClaudeBackend`, `OpenAIBackend` (+ Groq, Together, DeepSeek, local) |
+| `Analyzer` | Add custom Shadow analysis stages | `StaticAnalyzer`, `SecretsAnalyzer`, `DependencyAnalyzer`, `LlmReviewer` |
+| `GlassboxLogger` | Route containment events to your logging system | `TracingLogger` |
+| `SandboxProvider` | Custom process sandboxing | `SeatbeltProvider` (macOS), `LinuxSandboxProvider`, `NoopProvider` |
 
 ## License
 

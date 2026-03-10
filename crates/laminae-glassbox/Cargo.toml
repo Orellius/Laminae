@@ -12,3 +12,10 @@ thiserror = { workspace = true }
 chrono = { workspace = true }
 tracing = { workspace = true }
 dirs = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "glassbox_bench"
+harness = false

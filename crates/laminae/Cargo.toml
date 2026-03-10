@@ -9,6 +9,12 @@ description = "The missing layer between raw LLMs and production AI — personal
 keywords = ["ai", "llm", "safety", "personality", "guardrails"]
 categories = ["api-bindings", "development-tools"]
 
+[features]
+default = []
+anthropic = ["dep:laminae-anthropic"]
+openai = ["dep:laminae-openai"]
+all-backends = ["anthropic", "openai"]
+
 [dependencies]
 laminae-psyche = { workspace = true }
 laminae-shadow = { workspace = true }
@@ -17,6 +23,8 @@ laminae-glassbox = { workspace = true }
 laminae-ollama = { workspace = true }
 laminae-persona = { workspace = true }
 laminae-cortex = { workspace = true }
+laminae-anthropic = { workspace = true, optional = true }
+laminae-openai = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
@@ -25,3 +33,4 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde_json = { workspace = true }
 reqwest = { workspace = true }
 futures-util = { workspace = true }
+chrono = { workspace = true }

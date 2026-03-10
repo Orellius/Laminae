@@ -17,3 +17,10 @@ regex = { workspace = true }
 anyhow = { workspace = true }
 tokio = { workspace = true }
 laminae-ollama = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "persona_bench"
+harness = false

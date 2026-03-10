@@ -13,3 +13,10 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 libc = { workspace = true }
 laminae-glassbox = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "ironclad_bench"
+harness = false

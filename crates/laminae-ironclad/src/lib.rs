@@ -5,8 +5,11 @@
 //! 1. **Command Whitelist**: Only approved binaries can execute. Network utilities,
 //!    crypto miners, compilers, and package managers are permanently blocked.
 //!
-//! 2. **Network Egress Filter**: Processes run inside a macOS `sandbox-exec` profile
+//! 2. **Network Egress Filter**: Processes run inside a platform-specific sandbox
 //!    that restricts network access to localhost and whitelisted API hosts only.
+//!    - **macOS**: Seatbelt (`sandbox-exec`) profile.
+//!    - **Linux**: Kernel namespaces, `prctl(PR_SET_NO_NEW_PRIVS)`, and `rlimit`.
+//!    - **Other**: Environment scrubbing only (no OS-level sandbox).
 //!
 //! 3. **Resource Watchdog**: Background monitor polls CPU/memory of child processes
 //!    and sends SIGKILL if thresholds are exceeded for a sustained period.
@@ -22,7 +25,7 @@
 //!     validate_binary("git")?;  // OK
 //!     // validate_binary("ssh")?;  // BLOCKED
 //!
-//!     // Run inside macOS sandbox
+//!     // Run inside platform-specific sandbox
 //!     let mut cmd = sandboxed_command("git", &["status"], "/path/to/project")?;
 //!     let child = cmd.spawn()?;
 //!
@@ -44,6 +47,15 @@ use anyhow::{bail, Result};
 use tokio::process::Command;
 
 use laminae_glassbox::{log_glassbox_event, Severity};
+
+pub mod sandbox;
+pub use sandbox::{default_provider, NetworkPolicy, NoopProvider, SandboxProfile, SandboxProvider};
+
+#[cfg(target_os = "macos")]
+pub use sandbox::SeatbeltProvider;
+
+#[cfg(target_os = "linux")]
+pub use sandbox::LinuxSandboxProvider;
 
 // ══════════════════════════════════════════════════════════
 // 1. COMMAND WHITELIST — Execution Denial
@@ -330,70 +342,14 @@ fn extract_all_binaries(command: &str) -> Vec<String> {
 }
 
 // ══════════════════════════════════════════════════════════
-// 2. NETWORK EGRESS FILTER — macOS Sandbox Profile
+// 2. SANDBOXED COMMAND — Platform-Abstracted
 // ══════════════════════════════════════════════════════════
 
-/// Generate a macOS `sandbox-exec` profile restricting network and filesystem access.
-fn generate_sandbox_profile(project_dir: &str) -> String {
-    format!(
-        r#"(version 1)
-
-;; Default: deny everything
-(deny default)
-
-;; Allow basic process operations
-(allow process-exec)
-(allow process-fork)
-(allow signal)
-(allow sysctl-read)
-
-;; Allow file reads globally (needed for binary execution, libs, etc.)
-(allow file-read*)
-
-;; Allow file writes ONLY in project directory and temp
-(allow file-write*
-    (subpath "{project_dir}")
-    (subpath "/tmp")
-    (subpath "/private/tmp")
-    (subpath "/var/folders")
-)
-
-;; Allow home dir dotfiles for tool configs
-(allow file-write*
-    (subpath (string-append (param "HOME") "/.config"))
-    (subpath (string-append (param "HOME") "/.local"))
-    (subpath (string-append (param "HOME") "/.cache"))
-)
-
-;; NETWORK: Allow ONLY outbound to localhost and whitelisted hosts
-(allow network-outbound
-    (remote ip "localhost:*")
-    (remote unix-socket)
-)
-
-;; Allow DNS resolution
-(allow network-outbound (remote ip "*:53"))
-
-;; Allow connections to whitelisted APIs (HTTPS)
-(allow network-outbound (remote ip "*:443"))
-
-;; BLOCK all inbound network connections (no reverse shells)
-(deny network-inbound)
-
-;; Allow IPC (needed for stdio communication)
-(allow ipc-posix-shm-read*)
-(allow ipc-posix-shm-write*)
-(allow mach-lookup)
-
-;; Allow reading system info
-(allow system-info)
-"#
-    )
-}
-
-/// Wrap a command with the macOS `sandbox-exec` profile.
+/// Wrap a command in the platform-specific sandbox.
 ///
-/// The original command becomes: `sandbox-exec -p <profile> <binary> <args...>`
+/// On macOS this uses `sandbox-exec` (Seatbelt). On Linux it applies kernel
+/// namespaces and resource limits via `pre_exec`. On other platforms a no-op
+/// provider scrubs environment variables only.
 pub fn sandboxed_command(binary: &str, args: &[&str], project_dir: &str) -> Result<Command> {
     sandboxed_command_with_config(binary, args, project_dir, &IroncladConfig::default())
 }
@@ -408,23 +364,8 @@ pub fn sandboxed_command_with_config(
     let bare = binary.rsplit('/').next().unwrap_or(binary);
     validate_binary_with_config(bare, config)?;
 
-    let profile = generate_sandbox_profile(project_dir);
-
-    let mut cmd = Command::new("sandbox-exec");
-    cmd.arg("-p").arg(&profile).arg(binary);
-
-    for arg in args {
-        cmd.arg(arg);
-    }
-
-    cmd.stdout(Stdio::piped());
-    cmd.stderr(Stdio::piped());
-
-    for var in &config.scrub_env_vars {
-        cmd.env_remove(var);
-    }
-
-    Ok(cmd)
+    let profile = SandboxProfile::from_config(project_dir, config);
+    default_provider().sandboxed_command(binary, args, &profile)
 }
 
 // ══════════════════════════════════════════════════════════
@@ -738,5 +679,32 @@ mod tests {
     fn test_extract_binaries_from_chain() {
         let bins = extract_all_binaries("echo test && git commit -m 'fix'");
         assert_eq!(bins, vec!["echo", "git"]);
+    }
+
+    #[test]
+    fn test_default_provider_available() {
+        let provider = default_provider();
+        assert!(provider.is_available());
+    }
+
+    #[test]
+    fn test_default_provider_name() {
+        let provider = default_provider();
+        #[cfg(target_os = "macos")]
+        assert_eq!(provider.name(), "seatbelt");
+        #[cfg(target_os = "linux")]
+        assert_eq!(provider.name(), "linux-ns");
+        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+        assert_eq!(provider.name(), "noop");
+    }
+
+    #[test]
+    fn test_sandbox_profile_from_config() {
+        let config = IroncladConfig::default();
+        let profile = SandboxProfile::from_config("/my/project", &config);
+        assert_eq!(profile.project_dir, "/my/project");
+        assert_eq!(profile.network_policy, NetworkPolicy::Restricted);
+        assert!(!profile.scrub_env_vars.is_empty());
+        assert!(profile.whitelisted_hosts.contains(&"localhost".to_string()));
     }
 }
