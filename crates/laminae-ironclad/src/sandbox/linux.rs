@@ -4,15 +4,11 @@
 //! user namespaces. Falls back gracefully when individual features are
 //! unavailable.
 
-#[cfg(target_os = "linux")]
 use std::os::unix::process::CommandExt;
 
-#[cfg(target_os = "linux")]
 use anyhow::Result;
-#[cfg(target_os = "linux")]
 use tokio::process::Command;
 
-#[cfg(target_os = "linux")]
 use super::{apply_common, NetworkPolicy, SandboxProfile, SandboxProvider};
 
 /// Sandbox provider for Linux.
@@ -27,10 +23,8 @@ use super::{apply_common, NetworkPolicy, SandboxProfile, SandboxProvider};
 /// 3. **Resource limits (`setrlimit`)** — caps file size, CPU time, address
 ///    space, and number of open files.
 /// 4. **Environment scrubbing** — removes secret-bearing environment variables.
-#[cfg(target_os = "linux")]
 pub struct LinuxSandboxProvider;
 
-#[cfg(target_os = "linux")]
 impl SandboxProvider for LinuxSandboxProvider {
     fn sandboxed_command(
         &self,
@@ -75,7 +69,6 @@ impl SandboxProvider for LinuxSandboxProvider {
 // ── Pre-exec helpers (run in the child, between fork and exec) ──────────
 
 /// Prevent the child from ever gaining new privileges.
-#[cfg(target_os = "linux")]
 fn apply_prctl() -> std::io::Result<()> {
     // PR_SET_NO_NEW_PRIVS = 38
     let ret = unsafe { libc::prctl(38, 1, 0, 0, 0) };
@@ -92,7 +85,6 @@ fn apply_prctl() -> std::io::Result<()> {
 /// rely on the combination of `PR_SET_NO_NEW_PRIVS` and rlimits — full
 /// network filtering would require eBPF/seccomp-bpf which is out of scope
 /// for the initial implementation.
-#[cfg(target_os = "linux")]
 fn apply_network_isolation(policy: &NetworkPolicy) {
     if *policy == NetworkPolicy::None {
         // CLONE_NEWUSER | CLONE_NEWNET — creating a net namespace requires a
@@ -111,7 +103,6 @@ fn apply_network_isolation(policy: &NetworkPolicy) {
 }
 
 /// Apply conservative resource limits.
-#[cfg(target_os = "linux")]
 fn apply_rlimits() {
     // Max file size: 256 MB
     set_rlimit(libc::RLIMIT_FSIZE, 256 * 1024 * 1024);
@@ -125,7 +116,6 @@ fn apply_rlimits() {
     set_rlimit(libc::RLIMIT_NPROC, 64);
 }
 
-#[cfg(target_os = "linux")]
 fn set_rlimit(resource: libc::__rlimit_resource_t, limit: u64) {
     let rlim = libc::rlimit {
         rlim_cur: limit,

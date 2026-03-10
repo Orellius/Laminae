@@ -10,10 +10,8 @@ use super::{apply_common, SandboxProfile, SandboxProvider};
 /// Generates a Seatbelt profile string that restricts filesystem writes to the
 /// project directory and temp paths, limits network egress to localhost and
 /// whitelisted hosts, and blocks all inbound connections.
-#[cfg(target_os = "macos")]
 pub struct SeatbeltProvider;
 
-#[cfg(target_os = "macos")]
 impl SandboxProvider for SeatbeltProvider {
     fn sandboxed_command(
         &self,
@@ -43,7 +41,6 @@ impl SandboxProvider for SeatbeltProvider {
 }
 
 /// Generate a macOS Seatbelt profile from a [`SandboxProfile`].
-#[cfg(target_os = "macos")]
 fn generate_seatbelt_profile(profile: &SandboxProfile) -> String {
     let project_dir = &profile.project_dir;
 

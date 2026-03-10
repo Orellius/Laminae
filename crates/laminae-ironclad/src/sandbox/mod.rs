@@ -9,7 +9,9 @@ use std::process::Stdio;
 use anyhow::Result;
 use tokio::process::Command;
 
+#[cfg(target_os = "linux")]
 mod linux;
+#[cfg(target_os = "macos")]
 mod macos;
 mod noop;
 
