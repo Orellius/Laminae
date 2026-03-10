@@ -12,10 +12,10 @@ Laminae (Latin: *layers*) is a modular Rust SDK that adds personality, safety, r
 ┌─────────────────────────────────────────────┐
 │              Your Application               │
 ├─────────────────────────────────────────────┤
-│  Psyche    │ Multi-agent cognitive pipeline  │
-│  Shadow    │ Adversarial red-teaming         │
-│  Ironclad  │ Process execution sandbox       │
-│  Glassbox  │ I/O containment layer           │
+│  Psyche    │ Multi-agent cognitive pipeline │
+│  Shadow    │ Adversarial red-teaming        │
+│  Ironclad  │ Process execution sandbox      │
+│  Glassbox  │ I/O containment layer          │
 ├─────────────────────────────────────────────┤
 │              Any LLM Backend                │
 │     (Claude, GPT, Ollama, your own)         │
