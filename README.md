@@ -1,6 +1,10 @@
-# Laminae
+<p align="center">
+  <img src="assets/laminae-git.png" alt="Laminae" width="320" />
+</p>
 
-**The missing layer between raw LLMs and production AI.**
+<h1 align="center">Laminae</h1>
+
+<p align="center"><strong>The missing layer between raw LLMs and production AI.</strong></p>
 
 Laminae (Latin: *layers*) is a modular Rust SDK that adds personality, safety, red-teaming, and process sandboxing to any AI application. Each layer works independently or together as a full stack.
 
