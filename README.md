@@ -253,8 +253,12 @@ laminae-openai = "0.3"       # OpenAI-compatible EgoBackend
 
 ## Python Bindings
 
+> **Note:** PyPI package coming soon. For now, build from source with [maturin](https://www.maturin.rs/).
+
 ```bash
-pip install laminae  # via maturin
+cd crates/laminae-python
+pip install maturin
+maturin develop  # builds and installs locally
 ```
 
 ```python
